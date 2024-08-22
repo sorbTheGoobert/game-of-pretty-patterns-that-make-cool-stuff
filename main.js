@@ -7,6 +7,9 @@
 
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
+let speed = 25;
+let loop = null;
+let generatoin = 1;
 
 const game = {
   width: canvas.width,
@@ -18,10 +21,14 @@ const game = {
   draw: () => {
     for (let x = 0; x < game.cellXAmount; x++) {
       for (let y = 0; y < game.cellYAmount; y++) {
-        console.log('hi')
-        if(game.map[x][y].alive) ctx.fillStyle = game.map[x][y].color.alive;
+        if (game.map[x][y].alive) ctx.fillStyle = game.map[x][y].color.alive;
         else ctx.fillStyle = game.map[x][y].color.dead;
-        ctx.fillRect(x * game.map[x][y].size + game.cellGap * (x + 1), y * game.map[x][y].size + game.cellGap * (y + 1), game.map[x][y].size, game.map[x][y].size)
+        ctx.fillRect(
+          x * game.map[x][y].size + game.cellGap * (x + 1),
+          y * game.map[x][y].size + game.cellGap * (y + 1),
+          game.map[x][y].size,
+          game.map[x][y].size
+        );
       }
     }
   },
@@ -32,23 +39,105 @@ const game = {
 // if more than 3 neigborsm, death
 // if dead and 3 alive neigbors, revive
 
+canvas.addEventListener("mousedown", (event) => {
+  let mouseXPos = event.offsetX;
+  let mouseYPos = event.offsetY;
+  mouseXPos = Math.floor(mouseXPos / (new Cell().size + game.cellGap));
+  mouseYPos = Math.floor(mouseYPos / (new Cell().size + game.cellGap));
+  if (
+    !(
+      mouseXPos >= 0 &&
+      mouseXPos < game.cellXAmount &&
+      mouseYPos >= 0 &&
+      mouseYPos < game.cellYAmount
+    )
+  ) {
+    return null;
+  }
+  if (!game.map[mouseXPos][mouseYPos].alive) {
+    game.map[mouseXPos][mouseYPos].alive = true;
+  } else {
+    game.map[mouseXPos][mouseYPos].alive = false;
+  }
+  game.draw();
+});
+
 class Cell {
   constructor() {
     this.alive = false;
     this.size = 10;
     this.color = {
       alive: "yellow",
-      dead: "#A0A0A0"
-    }
+      dead: "#A0A0A0",
+    };
   }
 }
 
 window.addEventListener("keydown", (event) => {
-  if (event.code === "Space") {
-    // Loop start
-    loop = setInterval(update, 1000 / 60);
+  if (event.code !== "Space") {
+    return null;
   }
+  if (loop) {
+    clearInterval(loop);
+    loop = null;
+    return null;
+  }
+  // Loop start
+  loop = setInterval(update, speed);
 });
+
+function checkCells(generatoin) {
+  const deadCells = []; //HOLY CRAP DEAD CELLS REAL!!!?!?!?!? (i dont play it nor know it that much but i know it has parrying. and as an ultrakill fan, that is cool)
+  const aliveCells = [];
+  game.map.forEach((row, x) => {
+    row.forEach((eachCell, y) => {
+      // Count neighbors
+      let aliveNeighbors = 0;
+      if (x > 0 && y > 0 && game.map[x - 1][y - 1].alive == true)
+        aliveNeighbors++;
+      if (y > 0 && game.map[x][y - 1].alive == true) aliveNeighbors++;
+      if (
+        x < game.cellXAmount - 1 &&
+        y > 0 &&
+        game.map[x + 1][y - 1].alive == true
+      )
+        aliveNeighbors++;
+      if (x > 0 && game.map[x - 1][y].alive == true) aliveNeighbors++;
+      if (x < game.cellXAmount - 1 && game.map[x + 1][y].alive == true)
+        aliveNeighbors++;
+      if (
+        x > 0 &&
+        y < game.cellYAmount - 1 &&
+        game.map[x - 1][y + 1].alive == true
+      )
+        aliveNeighbors++;
+      if (y < game.cellYAmount - 1 && game.map[x][y + 1].alive == true)
+        aliveNeighbors++;
+      if (
+        x < game.cellXAmount - 1 &&
+        y < game.cellYAmount - 1 &&
+        game.map[x + 1][y + 1].alive == true
+      )
+        aliveNeighbors++;
+
+      // Add to next generatoin
+      if (aliveNeighbors < 2 || aliveNeighbors > 3) {
+        deadCells.push(eachCell);
+      }
+      if (
+        ((aliveNeighbors === 2 || aliveNeighbors === 3) && eachCell.alive === true) ||
+        (aliveNeighbors === 3 && eachCell.alive === false)
+      ) {
+        aliveCells.push(eachCell);
+      }
+    });
+  });
+  deadCells.forEach((elem) => (elem.alive = false));
+  aliveCells.forEach((elem) => (elem.alive = true));
+  console.log(`----==== GENERATION ${generatoin} ====----`);
+  console.log("New generation members: ", aliveCells);
+  console.log("Pouplation: ", aliveCells.length);
+}
 
 function init() {
   // init map
@@ -70,6 +159,9 @@ function update() {
   ctx.clearRect(0, 0, game.width, game.height);
   ctx.fillStyle = "#C0C0C0";
   ctx.fillRect(0, 0, game.width, game.height);
+  checkCells(generatoin);
+  game.draw();
+  generatoin++;
 }
 
 window.onload = init();
